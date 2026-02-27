@@ -1,0 +1,23 @@
+[project]
+name = "picture-captioner-clusterer-chunker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow",
+    "pillow-heif",
+    "tqdm",
+    "numpy",
+    "typer",
+    "pydantic",
+    "pydantic-settings",
+    "python-json-logger",
+]
+
+[project.optional-dependencies]
+local = ["torch", "transformers", "bitsandbytes", "accelerate"]
+api = ["openai", "anthropic", "google-generativeai", "tenacity"]
+report = ["sentence-transformers", "umap-learn", "hdbscan"]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
