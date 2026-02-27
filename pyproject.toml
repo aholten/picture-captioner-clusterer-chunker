@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "picture-captioner-clusterer-chunker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow",
+    "pillow-heif",
+    "tqdm",
+    "numpy",
+    "typer",
+    "pydantic",
+    "pydantic-settings",
+    "python-json-logger",
+]
+
+[project.optional-dependencies]
+local = ["torch", "transformers", "bitsandbytes", "accelerate"]
+api = ["openai", "anthropic", "google-generativeai", "tenacity"]
+report = ["sentence-transformers", "umap-learn", "hdbscan"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+caption = "caption:app"
+cluster-report = "cluster_report:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]  # typer.Option() in defaults is the standard pattern
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

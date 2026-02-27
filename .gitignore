@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Runtime outputs
+config.env
+captions.jsonl
+caption.log
+cluster_export.csv
+cluster_report.md
