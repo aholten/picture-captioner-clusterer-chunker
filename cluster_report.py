@@ -6,7 +6,6 @@ import csv
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import typer
@@ -38,35 +37,59 @@ def _collect_photos(photos_dir: Path) -> list[tuple[str, Path]]:
 
 
 VOCABULARY = [
-    "a family photo", "a group of people", "a selfie", "a portrait",
-    "a landscape", "a sunset", "a beach", "mountains",
-    "food on a plate", "a restaurant", "cooking",
-    "a pet", "a dog", "a cat",
-    "a building", "architecture", "a city street",
-    "a car", "a vehicle",
-    "a screenshot", "text on a screen",
-    "a celebration", "a party", "a wedding",
-    "sports", "exercise", "outdoors activity",
-    "flowers", "a garden", "nature",
-    "a child", "a baby",
-    "an animal", "wildlife",
-    "artwork", "a painting", "a drawing",
+    "a family photo",
+    "a group of people",
+    "a selfie",
+    "a portrait",
+    "a landscape",
+    "a sunset",
+    "a beach",
+    "mountains",
+    "food on a plate",
+    "a restaurant",
+    "cooking",
+    "a pet",
+    "a dog",
+    "a cat",
+    "a building",
+    "architecture",
+    "a city street",
+    "a car",
+    "a vehicle",
+    "a screenshot",
+    "text on a screen",
+    "a celebration",
+    "a party",
+    "a wedding",
+    "sports",
+    "exercise",
+    "outdoors activity",
+    "flowers",
+    "a garden",
+    "nature",
+    "a child",
+    "a baby",
+    "an animal",
+    "wildlife",
+    "artwork",
+    "a painting",
+    "a drawing",
 ]
 
 
 @app.command()
 def report(
-    photos_dir: Optional[Path] = typer.Option(None, help="Path to photo library root"),
-    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Path to captions journal file"),
-    output_csv: Path = typer.Option(Path("cluster_export.csv"), help="Output CSV path"),
-    output_md: Path = typer.Option(Path("cluster_report.md"), help="Output markdown path"),
+    photos_dir: Path | None = typer.Option(None, help="Path to photo library root"),
+    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Captions journal file"),
+    output_csv: Path = typer.Option(Path("cluster_export.csv"), help="Output CSV"),
+    output_md: Path = typer.Option(Path("cluster_report.md"), help="Output markdown"),
     n_neighbors: int = typer.Option(15, help="UMAP n_neighbors"),
     min_cluster_size: int = typer.Option(20, help="HDBSCAN min_cluster_size"),
 ) -> None:
     """Generate cluster report from captions."""
-    from sentence_transformers import SentenceTransformer
     import hdbscan
     import umap
+    from sentence_transformers import SentenceTransformer
 
     from config import Settings
 
@@ -97,7 +120,9 @@ def report(
             labels[rel_path] = None  # needs fallback
             fallback_count += 1
 
-    typer.echo(f"{caption_count} captioned, {error_count} errors, {fallback_count} vocabulary fallbacks")
+    typer.echo(
+        f"{caption_count} captioned, {error_count} errors, {fallback_count} vocabulary fallbacks"
+    )
 
     # Encode captions/labels for clustering
     typer.echo("Loading sentence transformer...")
@@ -107,11 +132,7 @@ def report(
     texts_to_encode = []
     photo_order = []
 
-    if fallback_count > 0:
-        typer.echo("Encoding CLIP vocabulary for fallback matching...")
-        vocab_embeddings = st_model.encode(VOCABULARY, show_progress_bar=False)
-
-    for rel_path, full_path in all_photos:
+    for rel_path, _full_path in all_photos:
         label = labels[rel_path]
         if label is None:
             # Fallback: use closest vocabulary term (simple heuristic — use filename words)
@@ -186,7 +207,10 @@ def report(
         f.write(f"Total photos: {len(photo_order)}\n")
         f.write(f"Clusters: {n_clusters}\n")
         f.write(f"Noise points: {n_noise}\n\n")
-        f.write(f"Source: {caption_count} captioned, {error_count} errors, {fallback_count} vocabulary fallbacks\n\n")
+        f.write(
+            f"Source: {caption_count} captioned, {error_count} errors, "
+            f"{fallback_count} vocabulary fallbacks\n\n"
+        )
 
         for cl in sorted(clusters.keys()):
             if cl == -1:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import logging
 from typing import TYPE_CHECKING
 
@@ -14,8 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT = (
-    "Describe this photo in one or two sentences. "
-    "Focus on the main subject, setting, and activity."
+    "Describe this photo in one or two sentences. Focus on the main subject, setting, and activity."
 )
 
 
@@ -59,15 +57,17 @@ class LocalHFBackend(CaptionBackend):
             }
         ]
 
-        text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = self.processor(
-            text=[text], images=[image], return_tensors="pt"
-        ).to(self.model.device)
+        text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.processor(text=[text], images=[image], return_tensors="pt").to(
+            self.model.device
+        )
 
         with torch.no_grad():
             output_ids = self.model.generate(**inputs, max_new_tokens=256)
 
         # Strip the input tokens from the output
-        generated_ids = output_ids[:, inputs.input_ids.shape[1]:]
+        generated_ids = output_ids[:, inputs.input_ids.shape[1] :]
         result = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return result.strip()

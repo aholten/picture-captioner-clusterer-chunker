@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 from pathlib import Path
-from typing import Optional
 
 import typer
 from tqdm import tqdm
@@ -21,13 +19,22 @@ from journal import CaptionJournal
 
 app = typer.Typer(help="Picture Captioner — generate per-photo captions with pluggable backends.")
 
-IMAGE_EXTENSIONS = frozenset({
-    ".jpg", ".jpeg", ".png", ".heic", ".heif", ".tiff", ".tif", ".bmp", ".webp",
-})
+IMAGE_EXTENSIONS = frozenset(
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".heic",
+        ".heif",
+        ".tiff",
+        ".tif",
+        ".bmp",
+        ".webp",
+    }
+)
 
 DEFAULT_PROMPT = (
-    "Describe this photo in one or two sentences. "
-    "Focus on the main subject, setting, and activity."
+    "Describe this photo in one or two sentences. Focus on the main subject, setting, and activity."
 )
 
 SUBMIT_BATCH = 500  # bound in-flight futures
@@ -74,17 +81,17 @@ def _batched(iterable, n):
 
 @app.command()
 def run(
-    backend: str = typer.Option("mock", help="Backend name: mock, local, openai, xai, anthropic, gemini"),
+    backend: str = typer.Option("mock", help="Backend name (see docs for options)"),
     model: str = typer.Option("mock", help="Model identifier for the backend"),
-    photos_dir: Optional[Path] = typer.Option(None, help="Path to photo library root"),
-    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Path to captions journal file"),
+    photos_dir: Path | None = typer.Option(None, help="Path to photo library root"),
+    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Captions journal file"),
     prompt: str = typer.Option(DEFAULT_PROMPT, help="Caption prompt"),
     max_workers: int = typer.Option(1, help="Concurrent workers (1 for local, 8+ for API)"),
-    limit: int = typer.Option(0, help="Max photos to process this run (0 = unlimited)"),
-    restart_every: int = typer.Option(0, help="Exit with code 2 after N new photos (0 = disabled)"),
-    retry_status: Optional[str] = typer.Option(None, help="Comma-separated statuses to retry, e.g. error_api,error_model"),
-    force: bool = typer.Option(False, help="Ignore existing captions.jsonl, reprocess everything"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Run with MockBackend to validate images without inference"),
+    limit: int = typer.Option(0, help="Max photos to process (0 = unlimited)"),
+    restart_every: int = typer.Option(0, help="Exit code 2 after N photos (0 = disabled)"),
+    retry_status: str | None = typer.Option(None, help="Statuses to retry, e.g. error_api"),
+    force: bool = typer.Option(False, help="Reprocess everything from scratch"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate images with MockBackend"),
 ) -> None:
     """Run the captioning pipeline."""
     log_file = captions_jsonl.parent / "caption.log"
@@ -105,7 +112,7 @@ def run(
 
     # Clamp max_workers to 1 for local backend
     if backend == "local" and max_workers > 1:
-        logger.info("Local backend is single-threaded (GPU memory constraint). Ignoring --max-workers.")
+        logger.info("Local backend is single-threaded (GPU constraint). Ignoring --max-workers.")
         max_workers = 1
 
     # Load journal
@@ -189,8 +196,8 @@ def run(
 def estimate(
     backend: str = typer.Option("openai", help="Backend name for cost estimation"),
     model: str = typer.Option("gpt-4o-mini", help="Model identifier"),
-    photos_dir: Optional[Path] = typer.Option(None, help="Path to photo library root"),
-    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Path to captions journal file"),
+    photos_dir: Path | None = typer.Option(None, help="Path to photo library root"),
+    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Captions journal file"),
     max_workers: int = typer.Option(8, help="Assumed concurrent workers for time estimate"),
 ) -> None:
     """Estimate time and cost without running inference."""
@@ -205,31 +212,34 @@ def estimate(
     already_done = sum(1 for rp, _ in all_photos if journal.is_done(rp))
     remaining = total - already_done
 
-    # Rough estimates per model
+    # Rough estimates per model: (input_cost, output_cost, seconds) per image
+    _default = (0.0002, 0.00006, 1.0)
     cost_estimates = {
-        "gpt-4o-mini": {"input_per_img": 0.00015, "output_per_img": 0.00005, "secs_per_img": 0.8},
-        "gpt-4o": {"input_per_img": 0.00032, "output_per_img": 0.00012, "secs_per_img": 1.0},
-        "gemini-1.5-flash": {"input_per_img": 0.00008, "output_per_img": 0.00003, "secs_per_img": 0.5},
-        "gemini-2.0-flash": {"input_per_img": 0.00012, "output_per_img": 0.00005, "secs_per_img": 0.6},
-        "claude-haiku-4-5": {"input_per_img": 0.0012, "output_per_img": 0.0004, "secs_per_img": 1.0},
+        "gpt-4o-mini": (0.00015, 0.00005, 0.8),
+        "gpt-4o": (0.00032, 0.00012, 1.0),
+        "gemini-1.5-flash": (0.00008, 0.00003, 0.5),
+        "gemini-2.0-flash": (0.00012, 0.00005, 0.6),
+        "claude-haiku-4-5": (0.0012, 0.0004, 1.0),
     }
 
-    est = cost_estimates.get(model, {"input_per_img": 0.0002, "output_per_img": 0.00006, "secs_per_img": 1.0})
-    input_cost = remaining * est["input_per_img"]
-    output_cost = remaining * est["output_per_img"]
+    inp, outp, secs = cost_estimates.get(model, _default)
+    input_cost = remaining * inp
+    output_cost = remaining * outp
     total_cost = input_cost + output_cost
-    total_secs = (remaining * est["secs_per_img"]) / max_workers
-    mins = total_secs / 60
+    mins = (remaining * secs) / max_workers / 60
 
     typer.echo(f"Photos remaining:  {remaining:,} / {total:,} ({already_done:,} already done)")
     typer.echo(f"Backend:           {backend} / {model}")
-    typer.echo(f"Estimated cost:    ~${input_cost:.2f} (input) + ~${output_cost:.2f} (output) = ~${total_cost:.2f}")
+    typer.echo(
+        f"Estimated cost:    ~${input_cost:.2f} (input) "
+        f"+ ~${output_cost:.2f} (output) = ~${total_cost:.2f}"
+    )
     typer.echo(f"Estimated time:    ~{mins:.0f} min at {max_workers} workers")
 
 
 @app.command()
 def stats(
-    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Path to captions journal file"),
+    captions_jsonl: Path = typer.Option(Path("captions.jsonl"), help="Captions journal file"),
 ) -> None:
     """Print summary of an existing captions.jsonl."""
     journal = CaptionJournal(captions_jsonl)

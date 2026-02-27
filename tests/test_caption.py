@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from backends import load_backend, CorruptImageError
+from backends import CorruptImageError, load_backend
 from backends.mock import MockBackend
 from image_loader import load_image
 

@@ -39,7 +39,7 @@ class CaptionJournal:
         discarded = 0
 
         if self.path.exists():
-            with open(self.path, "r", encoding="utf-8") as f:
+            with open(self.path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -73,7 +73,7 @@ class CaptionJournal:
 
         with self._lock:
             if self._file is None:
-                self._file = open(self.path, "a", encoding="utf-8")
+                self._file = open(self.path, "a", encoding="utf-8")  # noqa: SIM115
             self._file.write(line)
             self._file.flush()
             os.fsync(self._file.fileno())

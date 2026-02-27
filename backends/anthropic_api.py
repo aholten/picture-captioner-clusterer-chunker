@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT = (
-    "Describe this photo in one or two sentences. "
-    "Focus on the main subject, setting, and activity."
+    "Describe this photo in one or two sentences. Focus on the main subject, setting, and activity."
 )
 
 
@@ -32,8 +31,7 @@ class AnthropicBackend(CaptionBackend):
 
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError(
-                "ANTHROPIC_API_KEY is not set in config.env. "
-                "Expected: ANTHROPIC_API_KEY=sk-ant-..."
+                "ANTHROPIC_API_KEY is not set in config.env. Expected: ANTHROPIC_API_KEY=sk-ant-..."
             )
 
         self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -41,13 +39,13 @@ class AnthropicBackend(CaptionBackend):
         self.prompt = prompt
 
     def caption(self, image: Image.Image) -> str:
+        from anthropic import APIConnectionError, RateLimitError
         from tenacity import (
             retry,
             retry_if_exception_type,
             stop_after_attempt,
             wait_exponential,
         )
-        from anthropic import RateLimitError, APIConnectionError
 
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError)),

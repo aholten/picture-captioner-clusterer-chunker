@@ -12,7 +12,5 @@ class MockBackend(CaptionBackend):
 
     def caption(self, image: Image.Image) -> str:
         if self.error_rate > 0 and random.random() < self.error_rate:
-            raise CorruptImageError(
-                path="<mock>", cause=Exception("simulated error")
-            )
+            raise CorruptImageError(path="<mock>", cause=Exception("simulated error"))
         return f"a mock caption for {self.model}"

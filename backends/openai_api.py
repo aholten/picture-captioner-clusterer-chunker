@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT = (
-    "Describe this photo in one or two sentences. "
-    "Focus on the main subject, setting, and activity."
+    "Describe this photo in one or two sentences. Focus on the main subject, setting, and activity."
 )
 
 
@@ -39,8 +38,7 @@ class OpenAIBackend(CaptionBackend):
 
         if not settings.OPENAI_API_KEY:
             raise ValueError(
-                "OPENAI_API_KEY is not set in config.env. "
-                "Expected: OPENAI_API_KEY=sk-..."
+                "OPENAI_API_KEY is not set in config.env. Expected: OPENAI_API_KEY=sk-..."
             )
 
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -48,13 +46,13 @@ class OpenAIBackend(CaptionBackend):
         self.prompt = prompt
 
     def caption(self, image: Image.Image) -> str:
+        from openai import APIConnectionError, RateLimitError
         from tenacity import (
             retry,
             retry_if_exception_type,
             stop_after_attempt,
             wait_exponential,
         )
-        from openai import RateLimitError, APIConnectionError
 
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError)),
@@ -93,10 +91,7 @@ class XAIBackend(CaptionBackend):
             ) from e
 
         if not settings.XAI_API_KEY:
-            raise ValueError(
-                "XAI_API_KEY is not set in config.env. "
-                "Expected: XAI_API_KEY=xai-..."
-            )
+            raise ValueError("XAI_API_KEY is not set in config.env. Expected: XAI_API_KEY=xai-...")
 
         self.client = openai.OpenAI(
             api_key=settings.XAI_API_KEY,
@@ -106,13 +101,13 @@ class XAIBackend(CaptionBackend):
         self.prompt = prompt
 
     def caption(self, image: Image.Image) -> str:
+        from openai import APIConnectionError, RateLimitError
         from tenacity import (
             retry,
             retry_if_exception_type,
             stop_after_attempt,
             wait_exponential,
         )
-        from openai import RateLimitError, APIConnectionError
 
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError)),

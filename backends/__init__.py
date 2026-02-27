@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .base import CaptionBackend, CorruptImageError
+from .base import CaptionBackend
+from .base import CorruptImageError as CorruptImageError
 from .mock import MockBackend
 
 if TYPE_CHECKING:
@@ -34,4 +35,5 @@ def load_backend(name: str, model: str, settings: Settings) -> CaptionBackend:
         from .gemini_api import GeminiBackend
 
         return GeminiBackend(model, settings)
-    raise ValueError(f"Unknown backend: {name!r}. Available: mock, local, openai, xai, anthropic, gemini")
+    available = "mock, local, openai, xai, anthropic, gemini"
+    raise ValueError(f"Unknown backend: {name!r}. Available: {available}")

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import logging
 from typing import TYPE_CHECKING
 
@@ -14,8 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT = (
-    "Describe this photo in one or two sentences. "
-    "Focus on the main subject, setting, and activity."
+    "Describe this photo in one or two sentences. Focus on the main subject, setting, and activity."
 )
 
 
@@ -31,8 +29,7 @@ class GeminiBackend(CaptionBackend):
 
         if not settings.GEMINI_API_KEY:
             raise ValueError(
-                "GEMINI_API_KEY is not set in config.env. "
-                "Expected: GEMINI_API_KEY=AI..."
+                "GEMINI_API_KEY is not set in config.env. Expected: GEMINI_API_KEY=AI..."
             )
 
         genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -41,13 +38,13 @@ class GeminiBackend(CaptionBackend):
         self.prompt = prompt
 
     def caption(self, image: Image.Image) -> str:
+        from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
         from tenacity import (
             retry,
             retry_if_exception_type,
             stop_after_attempt,
             wait_exponential,
         )
-        from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
         @retry(
             retry=retry_if_exception_type((ResourceExhausted, ServiceUnavailable)),

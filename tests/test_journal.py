@@ -98,8 +98,8 @@ def test_concurrent_writes_no_interleave(tmp_journal):
     journal.close()
 
     # Verify: 100 valid lines, all parseable
-    with open(tmp_journal, "r", encoding="utf-8") as f:
-        lines = [l.strip() for l in f if l.strip()]
+    with open(tmp_journal, encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
     assert len(lines) == 100
     for line in lines:
         obj = json.loads(line)  # should not raise
